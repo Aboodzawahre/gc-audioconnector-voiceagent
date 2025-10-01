@@ -83,14 +83,19 @@ export class OpenAIRealTime extends VoiceAIAgentBaseClass {
 
         console.log(new Date().toISOString() + ':' + '[OpenAI]END_POINT:', OPENAI_MODEL_ENDPOINT);
         
-        this.openAiWs = new WebSocket(OPENAI_MODEL_ENDPOINT, {
+        /*this.openAiWs = new WebSocket(OPENAI_MODEL_ENDPOINT, {
             headers: {
                 "api-key": OPENAI_API_KEY,
                 //"OpenAI-Beta": "realtime=v1"
             }
+        });*/
+        this.openAiWs = new WebSocket(OPENAI_MODEL_ENDPOINT, {
+            headers: {
+                Authorization: `Bearer ${OPENAI_API_KEY}`,
+                "OpenAI-Beta": "realtime=v1",
+            }
         });
-        // Control initial session with OpenAI
-        const initializeSession = () => {
+        // Control initial sessin with OpenAI  `Bearer ${      const in}`itializeSession = () => {
             
             const sessionUpdate = {
                 type: 'session.update',

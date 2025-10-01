@@ -30,9 +30,10 @@ import { DTMFService } from '../services/dtmf-service';
 import { VoiceAIAgentBaseClass } from '../services/voice-aiagent-base';
 import { VoiceAIAgentFactory } from '../services/voice-aiagent-factory';
 import { getMAXBinaryMessageSize,getMinBinaryMessageSize } from '../common/environment-variables'
+import { AudioPacedSender } from './audio-pacer';
 
 
-const BOT_PROVIDER = process.env.BOT_PROVIDER || 'OpenAI'; // Default to OpenAI if not specified
+const BOT_PROVIDER = process.env.BOT_PROVIDER || 'openai'; // Default to OpenAI if not specified
 
 
 
@@ -60,6 +61,7 @@ export class Session {
     private isCapturingDTMF = false;
     private isAudioPlaying = false;
     private buffer:Array<Uint8Array>=new Array<Uint8Array>();
+    private paced: AudioPacedSender;
     
     constructor(ws: WebSocket, sessionId: string, url: string) {
         this.ws = ws;
@@ -67,6 +69,7 @@ export class Session {
         this.url = url;
         console.log(new Date().toISOString()+':'+`[Session]Created a new Session with ID: ${this.clientSessionId}.`);        
         this.voiceAIAgentClient = VoiceAIAgentFactory.create(BOT_PROVIDER, this);
+        this.paced = new AudioPacedSender(ws,8000,2,2,250);
                 
     }
     getClientSessionId() { return this.clientSessionId; }
@@ -205,6 +208,10 @@ export class Session {
     }
 
     sendAudio(currBytes: Uint8Array) {
+      this.paced.enqueue(currBytes)
+    }
+
+    sendAudioLegacy(currBytes: Uint8Array) {
         //console.log(new Date().toISOString()+':'+`Sending ${currBytes.length/1000}KB of Audio to Genesys.`);
         this.buffer.push(currBytes);
         const totalLength = this.buffer?.reduce((acc, curr) => acc + curr.length, 0)||0;
@@ -248,6 +255,7 @@ export class Session {
             entities: [bargeInEvent]
         } as SelectParametersForType<'event', EventParameters>);
         this.buffer.length=0;
+        this.paced.flushAll()
         console.log(new Date().toISOString()+':'+`[Session] Sending barge-in event.`);
         this.send(message);
 
